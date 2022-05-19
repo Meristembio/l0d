@@ -1,0 +1,179 @@
+import React, { Fragment, useRef, useState } from 'react';
+
+import L0DPartsStandards from "./components/L0D-parts-standards";
+import L0DReceivers from "./components/L0D-receivers";
+
+import { SeqViz } from "seqviz";
+import { getReverseComplementSequenceString } from "ve-sequence-utils";
+
+import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import Form from 'react-bootstrap/Form';
+import InputGroup from 'react-bootstrap/InputGroup';
+import FormControl from 'react-bootstrap/FormControl';
+import FloatingLabel from 'react-bootstrap/FloatingLabel';
+import Button from 'react-bootstrap/Button';
+
+export function L0D(props) {
+  const [annotations, setAnnotations] = useState([]);
+  const [sequence, setSequence] = useState("actag");
+  const [display, setDisplay] = useState(false);
+
+  const sequenceInputRef = useRef();
+  const oh5InputRef = useRef([]);
+  const oh3InputRef = useRef([]);
+  const receiverInputRef = useRef();
+  const partStandardInputRef = useRef();
+
+  const handleInputChange = () => {
+    const partStandardInput = partStandardInputRef.current.value;
+    const receiverInput = receiverInputRef.current.value;
+    const sequenceInput = sequenceInputRef.current.value;
+    const oh5Input = oh5InputRef.current[partStandardInput].value;
+    const oh3Input = oh3InputRef.current[partStandardInput].value;
+
+    if(!oh5Input || !sequenceInput || !oh3Input || !receiverInput) {
+      setDisplay((prevDisplay) => {
+        return false;
+      });
+      return;
+    }
+
+    setDisplay((prevDisplay) => {
+      return true;
+    });
+
+    const receiver = L0DReceivers[receiverInput];
+    const receiverEnzyme = receiver.enzyme;
+    const receiverEnzymeSiteWithExtraNucl = receiverEnzyme.prevNucl + receiverEnzyme.site + receiverEnzyme.postNucl;
+    const receiverEnzymeSiteWithExtraNuclRevComp = getReverseComplementSequenceString(receiverEnzymeSiteWithExtraNucl);
+
+    const oh5 = L0DPartsStandards[partStandardInput].ohs[oh5Input];
+    const oh3 = L0DPartsStandards[partStandardInput].ohs[oh3Input];
+
+    setSequence((prevSequence) => {
+      return receiverEnzymeSiteWithExtraNucl + receiver.oh5 + oh5.oh + sequenceInput + oh3.oh + receiver.oh3 + receiverEnzymeSiteWithExtraNuclRevComp;
+    });
+
+    const enzyme5Start = receiverEnzyme.prevNucl.length;
+    const enzyme5End = enzyme5Start + receiverEnzyme.site.length;
+    const oh5RecStart = enzyme5End + receiverEnzyme.postNucl.length;
+    const oh5RecEnd = oh5RecStart + receiver.oh5.length;
+    const oh5Start = oh5RecEnd;
+    const oh5End = oh5Start + oh5.oh.length;
+    const sequenceStart = oh5End;
+    const sequenceEnd = sequenceStart + sequenceInput.length;
+    const oh3Start = sequenceEnd;
+    const oh3End =  sequenceEnd + oh3.oh.length;
+    const oh3RecStart = oh3End;
+    const oh3RecEnd = oh3RecStart + receiver.oh3.length;
+    const enzyme3Start = oh3RecEnd + receiverEnzyme.postNucl.length;
+    const enzyme3End = enzyme3Start + receiverEnzyme.site.length;
+
+    setAnnotations((prevAnnotations) => {
+      return [
+       { name: receiverEnzyme.name, start: enzyme5Start, end: enzyme5End, direction: 0, color: "orange" },
+       { name: "dOH", start: oh5RecStart, end: oh5RecEnd, direction: 0, color: "pink" },
+       { name: oh5.name + "-OH", start: oh5Start, end: oh5End, direction: 0, color: "teal" },
+       { name: "Seq", start: sequenceStart, end: sequenceEnd, direction: 0, color: "orange" },
+       { name: oh3.name + "-OH", start: oh3Start, end: oh3End, direction: 0, color: "teal" },
+       { name: "dOH", start: oh3RecStart, end: oh3RecEnd, direction: 0, color: "pink" },
+       { name: receiverEnzyme.name, start: enzyme3Start, end: enzyme3End, direction: 0, color: "orange" },
+      ];
+    });
+    return;
+  }
+
+  const partStandardInputItems = Object.keys(L0DPartsStandards).map(function(key) {
+    return <option key={key} value={key}>{L0DPartsStandards[key].name}</option>
+  });
+
+  const InputOHS = ({the_key, oh, slug, name, ohs, ohInputRef}) => {
+    const ohNInputRef = oh5InputRef
+    if(oh == 3){
+      const ohNInputRef = oh3InputRef
+    }
+    var defaultValue = "";
+    if(typeof ohNInputRef.current[the_key] !== 'undefined'){
+      defaultValue=ohNInputRef.current[the_key].value;
+    }
+    return (
+      <Form.Select key={slug} ref={ohInputRef} onChange={handleInputChange} aria-label={name} value={defaultValue} class="oh-select">
+          {Object.keys(ohs).map((key) => {
+            return (
+              <option key={key} value={key}>{ohs[key].name}</option>
+            )
+          })}
+      </Form.Select>
+    )
+  }
+  const partStandardInputOHSItems5 = Object.keys(L0DPartsStandards).map(function(key) {
+    return(
+      <FloatingLabel key={"ohs5-" + key } controlId={"ohs5-" + key } label={L0DPartsStandards[key].name + " OHs / 5'"}>
+        <InputOHS key={key} the_key={key} oh="5" slug={"ohs5-" + key} name={L0DPartsStandards[key].name + " OHs / 5'"} ohs={L0DPartsStandards[key].ohs} ohInputRef={element => {oh5InputRef.current[key] = element;}} />
+      </FloatingLabel>
+  )})
+
+  const partStandardInputOHSItems3 = Object.keys(L0DPartsStandards).map(function(key) {
+    return(
+      <FloatingLabel key={"ohs3-" + key } controlId={"ohs3-" + key } label={L0DPartsStandards[key].name + " OHs / 3'"}>
+        <InputOHS key={key} the_key={key} oh="3" slug={"ohs3-" + key} name={L0DPartsStandards[key].name + " OHs / 3'"} ohs={L0DPartsStandards[key].ohs} ohInputRef={element => {oh3InputRef.current[key] = element;}} />
+      </FloatingLabel>
+  )});
+
+  var receiverInputItems = Object.keys(L0DReceivers).map(function(key) {
+    return <option key={key} value={key}>{L0DReceivers[key].name}</option>
+  });
+
+  function SeqVizDisplay(props){
+    if (props.display){
+      return <div id="seqVizContainer">
+          <SeqViz
+            name="L0 Part Design"
+            seq={props.sequence}
+            viewer = "linear"
+            zoom = {{ linear: 80, circular: 0 }}
+            annotations={props.annotations}
+            style={{width: "100%", height: "50vh"}}
+          />
+        </div>;
+    } else {
+      return <div>Input your sequence</div>;
+    }
+  }
+
+  return(
+    <Container fluid>
+      <Row>
+        <Col>
+          <h1>L0 Designer</h1>
+        </Col>
+      </Row>
+      <Row>
+        <Col>
+          <Form>
+            <FloatingLabel controlId="sequenceInput" label="Sequence Input">
+              <FormControl ref={sequenceInputRef} onChange={handleInputChange} as="textarea" aria-label="Sequence Input" />
+            </FloatingLabel>
+            <FloatingLabel controlId="partStandardInput" label="Part Standard">
+              <Form.Select ref={partStandardInputRef} onChange={handleInputChange} aria-label="Part standard input">
+                {partStandardInputItems}
+              </Form.Select>
+            </FloatingLabel>
+            {partStandardInputOHSItems5}
+            {partStandardInputOHSItems3}
+            <FloatingLabel controlId="receiverInput" label="Receiver">
+              <Form.Select ref={receiverInputRef} onChange={handleInputChange}  aria-label="Receiver Input">
+                {receiverInputItems}
+              </Form.Select>
+            </FloatingLabel>
+          </Form>
+        </Col>
+        <Col>
+          <SeqVizDisplay display={display} sequence={sequence} annotations={annotations} />
+        </Col>
+      </Row>
+    </Container>
+  );
+}

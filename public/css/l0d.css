@@ -1,0 +1,49 @@
+textarea.form-control{
+  min-height: 15rem !important;
+}
+input, textarea, select{
+  margin-bottom: .5rem !important;
+}
+div#result {
+    word-break: break-all;
+}
+.display-item {
+    transition: all 0.35s linear;
+    background: linear-gradient(to bottom, #198754, #198754);
+    background-size: 0px 2px;
+    background-repeat: no-repeat;
+    background-position: left 100%;
+    position: relative;
+    border-bottom: solid 2px #198754;
+    line-height: 1em;
+    padding: 0.2em 0.4em;
+    font-family: monospace;
+    font-size: .8em;
+    border-radius: 0.2rem;
+    margin-right: 0.4rem;
+    cursor: pointer;
+    border-left: solid 1px transparent;
+}
+
+.display-item:hover {
+    background-size: 100% 2px;
+    border-left: solid 1px #198754;
+}
+
+.display-item:hover .display-item-name {
+    display: initial;
+}
+
+.display-item-name {
+    position: absolute;
+    top: -1.2rem;
+    padding: 0.2rem 0.5rem;
+    background: #198754;
+    color: white;
+    height: 1.2rem;
+    line-height: 1em;
+    display: none;
+    width: 7em;
+    font-size: .8em;
+    left: -1px;
+}
