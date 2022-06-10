@@ -22,19 +22,19 @@ export function getReverseComplementSequenceString(sequence){
   return getReverseSequenceString(getComplementSequenceString(sequence));
 }
 
-export function tm60(seq){
-    let seq60 = ""
+export function tmSeq(seq, tm){
+    let seq_final = ""
     if (seq.length){
         for(let i = 1; i<seq.length; i++){
-            if (tm(seq.substring(0,i)) > 60){
-                seq60 = seq.substring(0,i)
+            if (tmCalc(seq.substring(0,i)) > tm){
+                seq_final = seq.substring(0,i)
                 break
             }
         }
     }
-    return seq60
+    return seq_final
 }
 
-function tm(seq){
+function tmCalc(seq){
     return calculateTm(seq)
 }
