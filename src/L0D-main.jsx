@@ -56,7 +56,7 @@ class OHInput extends Component {
 
 class Fragment extends Component {
     render(){
-        return(<div>{this.props.fragment.seq}</div>)
+        return(<div>{this.props.seq}</div>)
     }
 }
 
@@ -81,7 +81,24 @@ class Fragments extends Component {
             let doh5 = ""
             let doh3 = ""
             let tc = ""
-            fragments_output.push(<Fragment seq={fragment.seq} res={fragment.res} />)
+            let seq = fragment.seq
+            if(fragment.idx === 0){
+                doh5 = this.props.doh5
+                oh5 = this.props.oh5.oh
+            }
+            else{
+                oh5 = seq.substring(0, this.props.oh_length + 1)
+                seq = seq.substring(this.props.oh_length, seq.length)
+            }
+
+            if(fragment.idx === this.state.fragments.length - 1){
+                doh3 = this.props.doh3
+                oh3 = this.props.oh3.oh
+            } else{
+                oh5 = seq.substring(seq.length - this.props.oh_length, seq.length)
+                seq = seq.substring(0, seq.length - this.props.oh_length + 1)
+            }
+            fragments_output.push(<Fragment oh5={oh5} oh3={oh3} doh5={doh5} doh3={doh3} tc={tc} eswen={this.props.eswen} seq={seq} res={fragment.res} />)
         })
 
         final_sequence += (this.props.oh3.tc?'tc':'') + this.props.oh3.oh + this.props.doh3 + getReverseComplementSequenceString(this.props.eswen)
@@ -285,7 +302,7 @@ class L0D extends Component {
                 oh3 = the_standard.ohs[this.state.oh3]
             }
 
-            output = <Fragments fragments={fragments} oh5={oh5} oh3={oh3} doh5={the_standard.receiver_ohs.oh5} doh3={the_standard.receiver_ohs.oh3} eswen={enzymeSiteWithExtraNucl} />
+            output = <Fragments oh_length={Math.abs(the_re.topSnipOffset - the_re.bottomSnipOffset)} fragments={fragments} oh5={oh5} oh3={oh3} doh5={the_standard.receiver_ohs.oh5} doh3={the_standard.receiver_ohs.oh3} eswen={enzymeSiteWithExtraNucl} />
         }
 
         return (
