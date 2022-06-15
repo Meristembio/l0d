@@ -2,8 +2,6 @@ import React, {Component} from 'react'
 import Select from 'react-select'
 
 import L0DPartsStandards from "./components/L0D-parts-standards"
-import L0DReceivers from "./components/L0D-receivers"
-import L0DEnzymes from "./components/L0D-enzymes"
 
 import {
     clearSequence,
@@ -11,7 +9,8 @@ import {
     tmSeq
 } from './components/Helpers'
 import {
-    getDigestFragmentsForRestrictionEnzymes,
+    defaultEnzymesByName,
+    getCutsitesFromSequence,
     aliasedEnzymesByName
 } from 've-sequence-utils'
 
@@ -54,249 +53,72 @@ class OHInput extends Component {
     }
 }
 
-class DisplayResult extends Component {
+
+class Fragment extends Component {
+    render(){
+        return(<div>{this.props.fragment.seq}</div>)
+    }
+}
+
+class Fragments extends Component {
+    constructor(props) {
+        super(props)
+        this.state = {
+            fragments: this.props.fragments
+        }
+    }
     render() {
         let output = []
-        if (this.props.data.length) {
-            output.push(<h4>Final sequence</h4>)
-        } else {
-            output.push(<div>No sequence input or no reciver defined</div>)
-        }
-        let seqParts = []
-        this.props.data.forEach((item) => {
-            seqParts.push(<p>
-                <strong>{item.name}</strong> ({item.type}): {item.seq}
-            </p>)
+        let final_sequence = ""
+        let fragments_output = []
+
+        final_sequence += this.props.eswen + this.props.doh5 + this.props.oh5.oh
+
+        this.state.fragments.forEach((fragment) => {
+            final_sequence += fragment.seq.toLowerCase() + fragment.res.toLowerCase()
+            let oh5 = ""
+            let oh3 = ""
+            let doh5 = ""
+            let doh3 = ""
+            let tc = ""
+            fragments_output.push(<Fragment seq={fragment.seq} res={fragment.res} />)
         })
 
-        output.push(
-            <div class="alert alert-light border">{seqParts}</div>
-        )
-        let primer_design = []
-        if (this.props.primer_data.ready) {
-            primer_design.push(<h4>Primers</h4>)
-            const fragments_len = this.props.primer_data.primers.length
-            const fragments_output = fragments_len - 1 + " restriction site(s) found. Part will be created from " + fragments_len + " fragment(s)."
-            primer_design.push(<div className="alert alert-info">{fragments_output}</div>)
+        final_sequence += (this.props.oh3.tc?'tc':'') + this.props.oh3.oh + this.props.doh3 + getReverseComplementSequenceString(this.props.eswen)
 
-            this.props.primer_data.primers.forEach((fragment_primers) => {
-                let primers = []
-                fragment_primers.primers.forEach((primer) => {
-                    primers.push(<div>
-                        <h5>{">" + primer.name} ({primer.seq.length} nt)</h5>
-                        <p>{primer.seq}</p>
-                    </div>)
-                })
-                let amplicon_size = ""
-                if(fragment_primers.amplicon_size)
-                    amplicon_size = "Amplicon: " + fragment_primers.amplicon_size + " bp"
-                primer_design.push(
-                    <div class="alert alert-light border">
-                        <h5>{"Primers fragment #" + fragment_primers.fragment_id + " (" + fragment_primers.method + ")"}</h5>
-                        {amplicon_size}
-                        {primers}
-                    </div>
-                )
-            })
-        }
-        return (
-            <div id="result">
-                {output}
-                {primer_design}
-            </div>
-        )
+        output.push(<h4>Amplicon sequence</h4>)
+        output.push(<div className="alert alert-light border text-break">{final_sequence}</div>)
+        output.push(<h4>Primer design</h4>)
+        output.push(<div className="alert alert-light border">{fragments_output}</div>)
+        return <div>{output}</div>
     }
 }
 
 class L0D extends Component {
     constructor(props) {
         super(props)
-        const defaultStandard = 'loop'
+        const default_standard = 'loop'
         this.state = {
             sequence: "agagactctcgcagagggctccctatagccgaGCTCTTCtagggcttgtgacacacagctcggatacggctatgggctagagac",
-            output: [],
-            standard: defaultStandard,
-            oh5: L0DPartsStandards[defaultStandard].default[5],
-            oh3: L0DPartsStandards[defaultStandard].default[3],
+            standard: default_standard,
             custom_oh5: '',
             custom_oh3: '',
-            receiver: L0DReceivers['pl0r'],
+            oh5: L0DPartsStandards[default_standard].default[5],
+            oh3: L0DPartsStandards[default_standard].default[3],
             pcrTm: 60,
             pcrMinLength: 90,
-            name: '',
-            enzymes: ['sapi', 'bsai', 'aari'],
-            primer_data: {
-                ready: false
-            }
+            name: 'Part',
+            base_pairs_from_end: 'aa',
+            enzymes: L0DPartsStandards[default_standard].domestication_enzymes,
         }
     }
 
-    componentDidMount() {
-        this.doDesign()
-    }
-
-    doDesign = () => {
-        const receiver = this.state.receiver
-        const sequenceInput = this.state.sequence
-
-        if (!sequenceInput || !receiver) {
-            this.setState({
-                output: [],
-            })
-            return
-        }
-        let RES = []
-        this.state.enzymes.forEach((enzyme_name) => {
-            RES.push(aliasedEnzymesByName[enzyme_name])
-        })
-        const digestFragments = getDigestFragmentsForRestrictionEnzymes(sequenceInput, false, RES)
-        let fragments = []
-        if(digestFragments.length)
-            digestFragments.forEach((digestFragment) => {
-                fragments.push({
-                    seq: sequenceInput.substring(digestFragment.start, digestFragment.end)
-                })
-            })
-        else
-            fragments.push({
-                seq: sequenceInput.substring(0, sequenceInput.length)
-            })
-
-        const receiverEnzymeSiteWithExtraNucl = receiver.enzyme.prevNucl + receiver.enzyme.site + receiver.enzyme.postNucl
-        const receiverEnzymeSiteWithExtraNuclRevComp = getReverseComplementSequenceString(receiverEnzymeSiteWithExtraNucl)
-
-        let output = []
-        let primer_data = {
-            ready: true,
-            primers: []
-        }
-
-        for (const [fragment_index, fragment] of fragments.entries()) {
-            let oh5 = {
-                'name': 'Custom',
-                'oh': this.state.custom_oh5
-            }
-            if (this.state.oh5 !== "custom") {
-                oh5 = L0DPartsStandards[this.state.standard].ohs[this.state.oh5]
-            }
-            if(fragment_index){
-                // not the first element
-                oh5 = {
-                    'name': 'Internal',
-                    'oh': ''
-                }
-            }
-            let oh3 = {
-                'name': 'Custom',
-                'oh': this.state.custom_oh3
-            }
-            if (this.state.oh3 !== "custom") {
-                oh3 = L0DPartsStandards[this.state.standard].ohs[this.state.oh3]
-            }
-            if(fragment_index !== fragments.length-1){
-                // not the last element
-                oh3 = {
-                    'name': 'Internal',
-                    'oh': '',
-                    'tc': null
-                }
-            }
-
-            const tc = oh3.tc ? "tc" : ""
-
-            output.push({
-                name: receiver.enzyme.name,
-                seq: receiverEnzymeSiteWithExtraNucl,
-                type: 're'
-            })
-            output.push({
-                name: "d-OH",
-                seq: receiver.oh5,
-                type: 'oh'
-            })
-            let oh_name = "custom-OH"
-            if (oh5.oh.length) {
-                oh_name = oh5.name + "-OH"
-            }
-            output.push({
-                name: oh_name,
-                seq: oh5.oh,
-                type: 'oh'
-            })
-            output.push({
-                name: "Sequence",
-                seq: fragment.seq,
-                type: 'seq'
-            })
-            if (tc.length) {
-                output.push({
-                    name: "tc",
-                    seq: tc,
-                    type: 'tc'
-                })
-            }
-            oh_name = "custom-OH"
-            if (oh3.oh.length) {
-                oh_name = oh3.name + "-OH"
-            }
-            output.push({
-                name: oh_name,
-                seq: oh3.oh,
-                type: 'oh'
-            })
-            output.push({
-                name: "d-OH",
-                seq: receiver.oh3,
-                type: 'oh'
-            })
-            output.push({
-                name: receiver.enzyme.name,
-                seq: receiverEnzymeSiteWithExtraNuclRevComp,
-                type: 're'
-            })
-
-            let finalSeq = ""
-            output.forEach((item) => {
-                finalSeq += item.seq
-            })
-
-            let fragment_primers = {
-                fragment_id: fragment_index,
-                method: '',
-                amplicon_size: 0,
-                primers: []
-            }
-
-            if (fragment.seq.length <= this.state.pcrMinLength) {
-                fragment_primers.method = "Oligo Annealing"
-                fragment_primers.primers.push({
-                    name: this.state.name + '-F' + fragment_index + "-F",
-                    seq: finalSeq
-                })
-                fragment_primers.primers.push({
-                    name: this.state.name + '-F' + fragment_index + "-R",
-                    seq: getReverseComplementSequenceString(finalSeq)
-                })
-            } else {
-                fragment_primers.method = "PCR"
-                fragment_primers.amplicon_size = finalSeq.length
-                fragment_primers.primers.push({
-                    name: this.state.name + '-F' + fragment_index + "-F",
-                    seq: receiverEnzymeSiteWithExtraNucl + receiver.oh5 + oh5.oh + tmSeq(fragment.seq, this.state.pcrTm)
-                })
-                fragment_primers.primers.push({
-                    name: this.state.name + '-F' + fragment_index + "-R",
-                    seq: receiverEnzymeSiteWithExtraNucl + getReverseComplementSequenceString(receiver.oh3) + getReverseComplementSequenceString(oh3.oh) + getReverseComplementSequenceString(tc) + tmSeq(getReverseComplementSequenceString(fragment.seq), this.state.pcrTm)
-                })
-            }
-            primer_data.primers.push(fragment_primers)
-        }
-
+    basePairsFromEndInputChangeHandle = (event) => {
         this.setState({
-            output: output,
-            primer_data: primer_data
+            base_pairs_from_end: event.target.value,
         })
     }
+
 
     domEnzymesInputChangeHandle = (event) => {
         let newEnzymes = []
@@ -305,32 +127,24 @@ class L0D extends Component {
         })
         this.setState({
             enzymes: newEnzymes,
-        }, () => {
-            this.doDesign()
         })
     }
 
     pcrMinLengthInputChangeHandle = (event) => {
         this.setState({
             pcrMinLength: event.target.value,
-        }, () => {
-            this.doDesign()
         })
     }
 
     pcrTmInputChangeHandle = (event) => {
         this.setState({
             pcrTm: event.target.value,
-        }, () => {
-            this.doDesign()
         })
     }
 
     nameInputChangeHandle = (event) => {
         this.setState({
             name: event.target.value,
-        }, () => {
-            this.doDesign()
         })
     }
 
@@ -338,8 +152,6 @@ class L0D extends Component {
         const clearedSequence = clearSequence(event.target.value)
         this.setState({
             sequence: clearedSequence,
-        }, () => {
-            this.doDesign()
         })
     }
 
@@ -348,62 +160,43 @@ class L0D extends Component {
             standard: event.target.value,
             oh5: L0DPartsStandards[event.target.value].default[5],
             oh3: L0DPartsStandards[event.target.value].default[3],
-        }, () => {
-            this.doDesign()
-        })
-    }
-
-    receiverInputChangeHandle = (event) => {
-        this.setState({receiver: L0DReceivers[event.target.value]}, () => {
-            this.doDesign()
         })
     }
 
     OH5InputChangeHandle = (event) => {
-        this.setState({oh5: event.target.value}, () => {
-            this.doDesign()
-        })
+        this.setState({oh5: event.target.value})
     }
 
     OH3InputChangeHandle = (event) => {
-        this.setState({oh3: event.target.value}, () => {
-            this.doDesign()
-        })
+        this.setState({oh3: event.target.value})
     }
 
     customOh5InputHandle = (event) => {
-        this.setState({custom_oh5: event.target.value}, () => {
-            this.doDesign()
-        })
+        this.setState({custom_oh5: event.target.value})
     }
 
     customOh3InputHandle = (event) => {
-        this.setState({custom_oh3: event.target.value}, () => {
-            this.doDesign()
-        })
+        this.setState({custom_oh3: event.target.value})
     }
 
     partStandardInputItems = Object.keys(L0DPartsStandards).map(function (key) {
         return <option key={key} value={key}>{L0DPartsStandards[key].name}</option>
     })
 
-    receiverInputItems = Object.keys(L0DReceivers).map(function (key) {
-        return <option key={key} value={key}>{L0DReceivers[key].name}</option>
-    })
-
     getEnzymesSelect = (enzymes) => {
         let domesticationEnzymesOutput = []
         enzymes.forEach((enzyme) => {
-            domesticationEnzymesOutput.push({value: enzyme, label: L0DEnzymes[enzyme].name})
+            domesticationEnzymesOutput.push({value: enzyme, label: defaultEnzymesByName[enzyme].name})
         })
         return domesticationEnzymesOutput
     }
 
     render() {
-
+        const the_standard = L0DPartsStandards[this.state.standard]
         const domesticationEnzymesOptions = []
-        Object.keys(L0DEnzymes).forEach(function (key) {
-            domesticationEnzymesOptions.push({value: key, label: L0DEnzymes[key].name})
+        Object.keys(defaultEnzymesByName).forEach(function (k, v) {
+            if(defaultEnzymesByName[k].isType2S)
+                domesticationEnzymesOptions.push({value: k, label: defaultEnzymesByName[k].name})
         })
 
         let custom_oh5_input
@@ -420,6 +213,79 @@ class L0D extends Component {
                 <FormControl onChange={this.customOh3InputHandle} value={this.state.custom_oh3}
                              aria-label="Custom OH 3"/>
             </FloatingLabel>
+        }
+
+        const sequenceInput = this.state.sequence
+        let output = ""
+
+        if (!sequenceInput) {
+            output = <div className="alert alert-info">Set a sequence to continue</div>
+        } else {
+            let RES = []
+            this.state.enzymes.forEach((enzyme_name) => {
+                RES.push(aliasedEnzymesByName[enzyme_name])
+            })
+            const cutSites = getCutsitesFromSequence(sequenceInput, false, RES)
+
+            let fragments = []
+            let recognitionSites = []
+
+            if(Object.keys(cutSites).length) {
+                let idx = 1
+                Object.entries(cutSites).forEach(([key, enzymeCuts]) => {
+                    enzymeCuts.forEach((enzymeCut) => {
+                        recognitionSites.push({
+                            start: enzymeCut.recognitionSiteRange['start'],
+                            end: enzymeCut.recognitionSiteRange['end'],
+                            enzyme: enzymeCut.name
+                        })
+                    })
+                    recognitionSites.sort(function(a,b) {
+                        return b.start - a.start
+                    })
+                    let nextStart = 0
+                    recognitionSites.forEach((recognitionSite) => {
+                        fragments.push({
+                            idx: idx,
+                            seq: sequenceInput.substring(nextStart, recognitionSite.start),
+                            res: sequenceInput.substring(recognitionSite.start, recognitionSite.end + 1)
+                        })
+                        nextStart = recognitionSite.end + 1
+                    })
+                    fragments.push({
+                        idx: idx,
+                        seq: sequenceInput.substring(nextStart, sequenceInput.length),
+                        res: ""
+                    })
+                    idx +=1
+                })
+            }
+            else
+                fragments.push({
+                    idx: 1,
+                    seq: sequenceInput.substring(0, sequenceInput.length),
+                    res: ""
+                })
+
+            const the_re = defaultEnzymesByName[the_standard.enzyme]
+            const enzymeSiteWithExtraNucl = this.state.base_pairs_from_end + the_re.site.toUpperCase() + the_standard.bases_upto_snip
+
+            let oh5 = {
+                name: 'Custom',
+                oh: this.state.custom_oh5
+            }
+            if (this.state.oh5 !== "custom") {
+                oh5 = the_standard.ohs[this.state.oh5]
+            }
+            let oh3 = {
+                name: 'Custom',
+                oh: this.state.custom_oh3
+            }
+            if (this.state.oh3 !== "custom") {
+                oh3 = the_standard.ohs[this.state.oh3]
+            }
+
+            output = <Fragments fragments={fragments} oh5={oh5} oh3={oh3} doh5={the_standard.receiver_ohs.oh5} doh3={the_standard.receiver_ohs.oh3} eswen={enzymeSiteWithExtraNucl} />
         }
 
         return (
@@ -450,9 +316,13 @@ class L0D extends Component {
                                 <FormControl onChange={this.pcrTmInputChangeHandle}
                                              value={this.state.pcrTm} aria-label="PCR Tm primers"/>
                             </FloatingLabel>
+                            <FloatingLabel controlId="basePairsFromEnd" label="Base pairs from end">
+                                <FormControl onChange={this.basePairsFromEndInputChangeHandle}
+                                             value={this.state.base_pairs_from_end} aria-label="Base pairs from end"/>
+                            </FloatingLabel>
                         </div>
                         <h3>Position</h3>
-                        <FloatingLabel controlId="partStandardInput" label="Part Standard">
+                        <FloatingLabel controlId="partStandardInput" label="Assembly Standard">
                             <Form.Select onChange={this.partStandardChangeHandle} aria-label="Part standard input">
                                 {this.partStandardInputItems}
                             </Form.Select>
@@ -463,12 +333,6 @@ class L0D extends Component {
                         <OHInput standard={this.state.standard} oh="3" cv={this.state.oh3}
                                  handler={this.OH3InputChangeHandle}/>
                         {custom_oh3_input}
-                        <h3>Receiver</h3>
-                        <FloatingLabel controlId="receiverInput" label="Receiver">
-                            <Form.Select onChange={this.receiverInputChangeHandle} aria-label="Receiver Input">
-                                {this.receiverInputItems}
-                            </Form.Select>
-                        </FloatingLabel>
                         <h3>Domestication</h3>
                         <Form.Text className="text-muted">
                             Domestication enzymes
@@ -479,8 +343,9 @@ class L0D extends Component {
                     </Col>
                     <Col lg={6}>
                         <h2>Outputs</h2>
-                        <DisplayResult data={this.state.output} name={this.state.name} method={this.state.method}
-                                       primer_data={this.state.primer_data}/>
+                        <div id="result">
+                            {output}
+                        </div>
                     </Col>
                 </Row>
             </Container>
