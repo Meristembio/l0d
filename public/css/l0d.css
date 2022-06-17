@@ -7,3 +7,17 @@ input, textarea, select{
 div#seqviz-container {
     height: 300px;
 }
+.hl{
+    position: relative;
+    border-bottom: solid 2px #198754;
+    line-height: 1em;
+    padding: 0.2em 0.4em;
+    font-size: .9em;
+    margin-right: 0.4rem;
+    cursor: pointer;
+    transition: all .3s ease-in-out;
+}
+
+.hl:hover {
+    background: rgb(60 153 110 / 50%);
+}

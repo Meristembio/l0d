@@ -20,6 +20,50 @@ import Col from 'react-bootstrap/Col'
 import Form from 'react-bootstrap/Form'
 import FormControl from 'react-bootstrap/FormControl'
 import FloatingLabel from 'react-bootstrap/FloatingLabel'
+import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
+import Tooltip from 'react-bootstrap/Tooltip';
+
+
+class Highlight extends Component {
+    render(){
+        if(this.props.text) {
+            let overlay_text = ""
+            switch (this.props.type) {
+                case 'eswen':
+                    overlay_text = "Restriction site"
+                    break
+                case 'doh':
+                    overlay_text = "Domestication overhang"
+                    break
+                case 'oh':
+                    overlay_text = "Overhang"
+                    break
+                case 'seq':
+                    overlay_text = "Sequence"
+                    break
+                case 'res':
+                    overlay_text = "Internal restriction site"
+                    break
+                case 'res_dom':
+                    overlay_text = "Internal restriction site (domesticated)"
+                    break
+                case 'tc':
+                    overlay_text = "Overhang complement bases for frame conservation"
+                    break
+                default:
+                    break
+            }
+            if(this.props.extra)
+                overlay_text += " " + this.props.extra
+            return <OverlayTrigger key={"ot" + this.props.key} placement="top" overlay={
+                <Tooltip id={"id" + this.props.key}>{overlay_text}</Tooltip>
+            }>
+                <span className={"hl hl-" + this.props.type}>{this.props.text}</span>
+            </OverlayTrigger>
+        }
+        return <i></i>
+    }
+}
 
 
 class InputOHS extends Component {
@@ -69,7 +113,7 @@ class ResEditor extends Component {
                 diferent_length_warwing =
                     <div className="alert alert-danger">New restriction site has different length than original: frame
                         shift if part is a CDS</div>
-            return <div className="alert alert-light border">
+            return <div className="alert alert-info border">
                 <h5>Restriction site domestication</h5>
                 <FloatingLabel controlId={"resInput" + this.props.idx} label="New restriction enzyme site">
                     <FormControl onChange={(e) => this.resInputHandle(this.props.idx, e.target.value)}
@@ -122,22 +166,21 @@ class PrimerDesign extends Component {
                 break
         }
         finalSeq += query.substring(lastIndex + 1, query.length)
-        console.log(ref + " / " + query + ": " + finalSeq)
-        return ref
+        return finalSeq
     }
 
     render() {
-        const fragment_name = this.props.name + "-F" + this.props.idx
+        const fragment_name = this.props.name + "-F" + (this.props.idx + 1)
         let primers = []
         if (this.props.method === 'oann') {
-            const finalSeq = this.props.eswen + this.props.doh5 + this.props.oh5 + this.props.seq + this.props.oh3 + this.props.doh3 + getReverseComplementSequenceString(this.props.eswen).toLowerCase()
+            const finalSeq = this.props.eswen + this.props.doh5 + this.props.oh5 + this.props.seq + this.props.tc + this.props.oh3 + this.props.doh3 + getReverseComplementSequenceString(this.props.eswen).toLowerCase()
             primers.push(<Primer seq={finalSeq} name={fragment_name} type={"F"}/>)
             primers.push(<Primer seq={getReverseComplementSequenceString(finalSeq)} name={fragment_name} type={"R"}/>)
         } else {
             // pcr
-            const finalSeq_fwd = this.props.eswen + this.props.doh5 + this.props.oh5 + tmSeq(this.props.seq, this.props.pcrTm)
+            const finalSeq_fwd = this.props.eswen + this.props.doh5 + this.props.oh5 + tmSeq(this.props.template, this.props.pcrTm)
             primers.push(<Primer seq={finalSeq_fwd} name={fragment_name} type={"F"}/>)
-            const finalSeq_rev = this.props.eswen + getReverseComplementSequenceString(this.props.oh3 + this.props.doh3) + tmSeq(getReverseComplementSequenceString(this.props.template + this.seqOverflow(this.props.res, this.props.new_res)), this.props.pcrTm).toLowerCase()
+            const finalSeq_rev = this.props.eswen + getReverseComplementSequenceString(this.props.oh3 + this.props.doh3).toUpperCase() + getReverseComplementSequenceString(this.props.tc) + tmSeq(getReverseComplementSequenceString(this.props.template + this.seqOverflow(this.props.res, this.props.new_res)), this.props.pcrTm).toLowerCase()
             primers.push(<Primer seq={finalSeq_rev} name={fragment_name} type={"R"}/>)
         }
         return (<div className="alert alert-light border text-break">
@@ -146,7 +189,7 @@ class PrimerDesign extends Component {
             <ResEditor resInputHandle={this.resInputHandle} frame_pos={this.props.seq_no_res.length % 3}
                        new_res={this.props.new_res} res={this.props.res} idx={this.props.idx}/>
             {primers}
-            <div className="alert alert-info small">
+            <div className="alert alert-info small collapse">
                 <p><strong>Idx</strong>: {this.props.idx}</p>
                 <p><strong>Method</strong>: {this.props.method}</p>
                 <p><strong>doh5</strong>: {this.props.doh5}</p>
@@ -209,20 +252,27 @@ class Fragments extends Component {
 
     render() {
         let output = []
-        let final_sequence = ""
+        let final_sequence = []
         let fragments_output = []
+        const tc_bases = 'tc'
 
-        final_sequence += this.props.eswen + this.props.doh5 + this.props.oh5.oh
+        final_sequence.push(<Highlight text={this.props.eswen} type="eswen" key="1" />)
+        final_sequence.push(<Highlight text={this.props.doh5} type="doh" key="2" />)
+        final_sequence.push(<Highlight text={this.props.oh5.oh} type="oh" key="3" />)
 
-        this.state.fragments.forEach((fragment) => {
-            final_sequence += fragment.seq.toLowerCase() + fragment.new_res.toLowerCase()
+        this.state.fragments.forEach((fragment, fragment_idx, fragments_arr) => {
+            final_sequence.push(<Highlight text={fragment.seq} extra={"fragment " + (fragment_idx + 1)} type="seq" key={"4-" + fragment_idx} />)
+            let res_type = 'res'
+            if(fragment.new_res !== fragment.res)
+                res_type = 'res_dom'
+            final_sequence.push(<Highlight text={fragment.new_res} type={res_type} key={"5-" + fragment_idx} />)
             let oh5 = ""
             let oh3 = ""
             let doh5 = ""
             let doh3 = ""
-            let tc = ""
             let seq = fragment.seq
             let template = fragment.seq
+            let tc = ''
             if (fragment.idx === 0) {
                 doh5 = this.props.doh5
                 oh5 = this.props.oh5.oh
@@ -232,13 +282,13 @@ class Fragments extends Component {
             }
 
             if (fragment.idx === this.state.fragments.length - 1) {
+                tc = this.props.oh3.tc ? tc_bases : ''
                 doh3 = this.props.doh3
                 oh3 = this.props.oh3.oh
             } else {
                 template = seq + this.commonStart(fragment.res, fragment.new_res)
                 seq = seq + fragment.new_res
-                oh3 = seq.substring(seq.length - this.props.oh_length, seq.length)
-                seq = seq.substring(0, seq.length - this.props.oh_length)
+                oh3 = fragments_arr[fragment_idx + 1].seq.substring(0, this.props.oh_length)
             }
             let method = "pcr"
             if (fragment.seq.length <= this.props.pcrMinLength) {
@@ -251,7 +301,10 @@ class Fragments extends Component {
                                                 seq={seq} res={fragment.res} new_res={fragment.new_res} seq_no_res={fragment.seq}/>)
         })
 
-        final_sequence += (this.props.oh3.tc ? 'tc' : '') + this.props.oh3.oh + this.props.doh3 + getReverseComplementSequenceString(this.props.eswen)
+        final_sequence.push(<Highlight text={this.props.oh3.tc ? tc_bases : ''} type="tc" key="6" />)
+        final_sequence.push(<Highlight text={this.props.oh3.oh} type="oh" key="7" />)
+        final_sequence.push(<Highlight text={this.props.doh3} type="doh" key="8" />)
+        final_sequence.push(<Highlight text={this.props.eswen} type="eswen" key="9" />)
 
         output.push(<h4>Amplicon / Oligo annealing sequence</h4>)
         output.push(<div className="alert alert-light border text-break">{final_sequence}</div>)
@@ -273,7 +326,7 @@ class L0D extends Component {
             oh5: L0DPartsStandards[default_standard].default[5],
             oh3: L0DPartsStandards[default_standard].default[3],
             pcrTm: 60,
-            pcrMinLength: 90,
+            pcrMinLength: 20,
             name: 'Part',
             base_pairs_from_end: 'aa',
             enzymes: L0DPartsStandards[default_standard].domestication_enzymes,
@@ -432,6 +485,8 @@ class L0D extends Component {
                     seq: sequenceInput.substring(0, sequenceInput.length),
                     res: ""
                 })
+
+            console.log(fragments)
 
             const the_re = defaultEnzymesByName[the_standard.enzyme]
             const enzymeSiteWithExtraNucl = this.state.base_pairs_from_end + the_re.site.toUpperCase() + the_standard.bases_upto_snip
