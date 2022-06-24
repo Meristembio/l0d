@@ -25,8 +25,8 @@ import Tooltip from 'react-bootstrap/Tooltip';
 
 
 class Highlight extends Component {
-    render(){
-        if(this.props.text) {
+    render() {
+        if (this.props.text) {
             let overlay_text = ""
             switch (this.props.type) {
                 case 'eswen':
@@ -53,7 +53,7 @@ class Highlight extends Component {
                 default:
                     break
             }
-            if(this.props.extra)
+            if (this.props.extra)
                 overlay_text += " " + this.props.extra
             return <OverlayTrigger key={"ot" + this.props.key} placement="top" overlay={
                 <Tooltip id={"id" + this.props.key}>{overlay_text}</Tooltip>
@@ -75,7 +75,8 @@ class InputOHS extends Component {
             className="oh-select" ref={"ref" + this.props.oh}>
             {Object.keys(L0DPartsStandards[this.props.standard].ohs).map((key) => {
                 return (
-                    <option key={key} value={key}>{L0DPartsStandards[this.props.standard].ohs[key].name + (L0DPartsStandards[this.props.standard].ohs[key].tc?' (+tc)':'')}</option>
+                    <option key={key}
+                            value={key}>{L0DPartsStandards[this.props.standard].ohs[key].name + (L0DPartsStandards[this.props.standard].ohs[key].tc ? ' (+tc)' : '')}</option>
                 )
             })}
             <option key="custom" value="custom">Custom</option>
@@ -97,8 +98,49 @@ class OHInput extends Component {
     }
 }
 
+class Primer extends Component {
+    render() {
+        return <div>
+            <div>{"> " + this.props.name + "-" + this.props.type}</div>
+            <div className="alert alert-warning">{this.props.seq}</div>
+        </div>
+    }
+}
+
+class PrimerDesign extends Component {
+    render() {
+        const fragment_name = this.props.name + "-F" + (this.props.idx + 1)
+        let primers = []
+        let method = "pcr"
+        if (this.props.template.length <= this.props.pcrMinLength) {
+            method = "oann"
+        }
+        if(method == "oann"){
+            const finalSeq = this.props.eswen + this.props.extra5 + this.props.template + this.props.extra3 + getReverseComplementSequenceString(this.props.eswen)
+            primers.push(<Primer seq={finalSeq} name={fragment_name} type={"F"}/>)
+            primers.push(<Primer seq={getReverseComplementSequenceString(finalSeq)} name={fragment_name} type={"R"}/>)
+        } else {
+            const finalSeq_fwd = this.props.eswen + this.props.extra5 + tmSeq(this.props.template, this.props.pcrTm)
+            primers.push(<Primer seq={finalSeq_fwd} name={fragment_name} type={"F"}/>)
+            const finalSeq_rev = getReverseComplementSequenceString(this.props.extra3 + this.props.eswen) + tmSeq(getReverseComplementSequenceString(this.props.template), this.props.pcrTm)
+            primers.push(<Primer seq={finalSeq_rev} name={fragment_name} type={"R"}/>)
+        }
+        return (<div className="alert alert-light border text-break">
+            <h5>{fragment_name}</h5>
+            <div>Method: {method}</div>
+            {primers}
+        </div>)
+    }
+}
+
 
 class ResEditor extends Component {
+    constructor(props) {
+        super(props)
+        if (props.new_res === undefined)
+            this.resInputHandle(this.props.res.idx, this.props.res.seq)
+    }
+
     resInputHandle = (i, v) => {
         this.props.resInputHandle(i, v)
     }
@@ -106,30 +148,50 @@ class ResEditor extends Component {
     render() {
         if (this.props.res) {
             let equal_warwing = ""
-            if (this.props.res.toLowerCase() === this.props.new_res.toLowerCase())
+            let res = this.props.res
+            let new_res = this.props.new_res ? this.props.new_res : ""
+
+            if (res.seq.toLowerCase() === new_res.toLowerCase())
                 equal_warwing = <div className="alert alert-danger">Restriction site unchanged</div>
             let diferent_length_warwing = ""
-            if (this.props.res.length !== this.props.new_res.length)
+
+            if (res.seq.length !== new_res.length && new_res.length > 0)
                 diferent_length_warwing =
-                    <div className="alert alert-danger">New restriction site has different length than original: frame
-                        shift if part is a CDS</div>
+                    <div className="alert alert-warning">New restriction site has different length than original</div>
+
+            let frame_string = ""
+            if (new_res) {
+                let start = new_res.substring(0, res.start % 3) + "-"
+                if (start.length === 1)
+                    start = ""
+                frame_string = " (" + start + new_res.substring(res.start % 3, res.start % 3 + 3) + ")"
+            }
+
             return <div className="alert alert-info border">
-                <h5>Restriction site domestication</h5>
-                <FloatingLabel controlId={"resInput" + this.props.idx} label="New restriction enzyme site">
-                    <FormControl onChange={(e) => this.resInputHandle(this.props.idx, e.target.value)}
-                                 value={this.props.new_res} aria-label="New restriction enzyme site"/>
-                </FloatingLabel>
-                <div className="mb-2">
-                    <span>Frame position: {this.props.frame_pos}</span>
-                </div>
-                <div className="mb-2">
-                    <button type="button" className="btn btn-secondary me-2"
-                            onClick={(e) => this.resInputHandle(this.props.idx, this.props.res)}>Reset to original
-                    </button>
-                    <button type="button" className="btn btn-secondary me-2" onClick={(e) => {
-                        alert("Not implemented")
-                    }}>Show recommendation
-                    </button>
+                <h5>Restriction site # {res.idx + 1}</h5>
+                <div className="row">
+                    <div className="col-7">
+                        <FloatingLabel controlId={"resInput" + res.idx} label="New restriction enzyme site">
+                            <FormControl onChange={(e) => this.resInputHandle(res.idx, e.target.value)}
+                                         value={new_res} aria-label="New restriction enzyme site"/>
+                        </FloatingLabel>
+                        <div className="mb-2">
+                            <button type="button" className="btn btn-secondary me-2"
+                                    onClick={(e) => this.resInputHandle(res.idx, res.seq)}>Reset
+                            </button>
+                            <button type="button" className="btn btn-secondary me-2" onClick={(e) => {
+                                alert("To be implemented")
+                            }}>Recommended
+                            </button>
+                        </div>
+                    </div>
+                    <div className="col-5">
+                        <div className="mb-2 small">
+                            <span><strong>Enzyme</strong>: {res.enzyme}</span><br/>
+                            <span><strong>Position</strong>: {(res.start + 1) + " to " + (res.end + 1)}</span><br/>
+                            <span><strong>Frame position</strong>: {((res.start % 3) + 1) + frame_string}</span><br/>
+                        </div>
+                    </div>
                 </div>
                 {equal_warwing}
                 {diferent_length_warwing}
@@ -140,94 +202,15 @@ class ResEditor extends Component {
     }
 }
 
-
-class Primer extends Component {
-    render() {
-        return <div>
-            <div>{"> " + this.props.name + "-" + this.props.type}</div>
-            <div className="alert alert-warning">{this.props.seq}</div>
-        </div>
-    }
-}
-
-
-class PrimerDesign extends Component {
-    resInputHandle = (i, v) => {
-        this.props.resInputHandle(i, v)
-    }
-
-    seqOverflow(ref, query){
-        let finalSeq = ""
-        let lastIndex = 0
-        for (var i = 0; i < Math.min(ref.length, query.length); i++) {
-            if (ref.charAt(i).toLowerCase() === query.charAt(i).toLowerCase())
-                lastIndex = i
-            else
-                break
-        }
-        finalSeq += query.substring(lastIndex + 1, query.length)
-        return finalSeq
-    }
-
-    render() {
-        const fragment_name = this.props.name + "-F" + (this.props.idx + 1)
-        let primers = []
-        if (this.props.method === 'oann') {
-            const finalSeq = this.props.eswen + this.props.doh5 + this.props.oh5 + this.props.seq + this.props.tc + this.props.oh3 + this.props.doh3 + getReverseComplementSequenceString(this.props.eswen).toLowerCase()
-            primers.push(<Primer seq={finalSeq} name={fragment_name} type={"F"}/>)
-            primers.push(<Primer seq={getReverseComplementSequenceString(finalSeq)} name={fragment_name} type={"R"}/>)
-        } else {
-            // pcr
-            const finalSeq_fwd = this.props.eswen + this.props.doh5 + this.props.oh5 + tmSeq(this.props.template, this.props.pcrTm)
-            primers.push(<Primer seq={finalSeq_fwd} name={fragment_name} type={"F"}/>)
-            const finalSeq_rev = this.props.eswen + getReverseComplementSequenceString(this.props.oh3 + this.props.doh3).toUpperCase() + getReverseComplementSequenceString(this.props.tc) + tmSeq(getReverseComplementSequenceString(this.props.template + this.seqOverflow(this.props.res, this.props.new_res)), this.props.pcrTm).toLowerCase()
-            primers.push(<Primer seq={finalSeq_rev} name={fragment_name} type={"R"}/>)
-        }
-        return (<div className="alert alert-light border text-break">
-            <h5>{fragment_name}</h5>
-            <div>Method: {this.props.method}</div>
-            <ResEditor resInputHandle={this.resInputHandle} frame_pos={this.props.seq_no_res.length % 3}
-                       new_res={this.props.new_res} res={this.props.res} idx={this.props.idx}/>
-            {primers}
-            <div className="alert alert-info small collapse">
-                <p><strong>Idx</strong>: {this.props.idx}</p>
-                <p><strong>Method</strong>: {this.props.method}</p>
-                <p><strong>doh5</strong>: {this.props.doh5}</p>
-                <p><strong>oh5</strong>: {this.props.oh5}</p>
-                <p><strong>doh3</strong>: {this.props.doh3}</p>
-                <p><strong>oh3</strong>: {this.props.oh3}</p>
-                <p><strong>Seq</strong>: {this.props.seq}</p>
-                <p><strong>Template</strong>: {this.props.template}</p>
-                <p><strong>tc</strong>: {this.props.tc}</p>
-                <p><strong>new_res</strong>: {this.props.new_res}</p>
-                <p><strong>seq_no_res</strong>: {this.props.seq_no_res}</p>
-                <p><strong>res</strong>: {this.props.res}</p>
-            </div>
-        </div>)
-    }
-}
-
 class Fragments extends Component {
     constructor(props) {
         super(props)
-        let fragments = this.props.fragments
-        fragments.forEach((fragment) => {
-            fragment.new_res = fragment.res
+        let new_res = []
+        props.res.forEach((re) => {
+            new_res.push(re.seq)
         })
         this.state = {
-            fragments: fragments
-        }
-    }
-
-    componentDidUpdate(prevProps) {
-        if(prevProps.fragments !== this.props.fragments) {
-            let fragments = this.props.fragments
-            fragments.forEach((fragment) => {
-                fragment.new_res = fragment.res
-            })
-            this.setState({
-                fragments: fragments
-            })
+            new_res: new_res
         }
     }
 
@@ -242,74 +225,162 @@ class Fragments extends Component {
         return finalSeq
     }
 
+    firstCommonIndexAfterDiff(ref, query) {
+        let firstIndex = null
+        let diffFound = false
+        if (ref.length === query.length)
+            for (var i = 0; i < query.length; i++) {
+                if (ref.charAt(i).toLowerCase() === query.charAt(i).toLowerCase())
+                    if (diffFound && ref.substring(i, query.length) === query.substring(i, query.length)) {
+                        firstIndex = i
+                        break
+                    } else
+                        diffFound = true
+            }
+        return firstIndex
+    }
+
+    lastCommonIndex(ref, query) {
+        let lastIndex = 0
+        for (var i = 0; i < Math.min(ref.length, query.length); i++) {
+            if (ref.charAt(i).toLowerCase() === query.charAt(i).toLowerCase())
+                lastIndex = i
+            else
+                break
+        }
+        return lastIndex
+    }
+
+    resParts(ref, query) {
+        const lastCommonIndex = this.lastCommonIndex(ref, query)
+        const firstCommonIndexAfterDiff = this.firstCommonIndexAfterDiff(ref, query)
+
+        let start = ref.substring(0, lastCommonIndex + 1)
+        let diff = ""
+        let end = ""
+        if (firstCommonIndexAfterDiff && firstCommonIndexAfterDiff > lastCommonIndex) {
+            diff = ref.substring(lastCommonIndex + 1, firstCommonIndexAfterDiff)
+            end = ref.substring(firstCommonIndexAfterDiff, query.length)
+        }
+
+        return {
+            'start': start,
+            'diff': diff,
+            'end': end,
+        }
+    }
+
     resInputHandle = (i, v) => {
-        let fragments = this.state.fragments
-        fragments[i].new_res = v
+        let new_res = this.state.new_res
+        new_res[i] = clearSequence(v)
         this.setState({
-            fragments: fragments
+            new_res: new_res
         })
+    }
+
+    formatOH(seq, oh_length){
+        return seq.substring(0, oh_length).toUpperCase() + seq.substring(oh_length, seq.length).toLowerCase()
     }
 
     render() {
         let output = []
         let final_sequence = []
-        let fragments_output = []
+        let domestication_output = []
+        let fragments = []
         const tc_bases = 'tc'
+        let extra5 = ""
+        let extra3 = ""
+        let minOhLengthAlert = ""
+        const oh_length = Math.abs(this.props.the_re.topSnipOffset - this.props.the_re.bottomSnipOffset)
 
-        final_sequence.push(<Highlight text={this.props.eswen} type="eswen" key="1" />)
-        final_sequence.push(<Highlight text={this.props.doh5} type="doh" key="2" />)
-        final_sequence.push(<Highlight text={this.props.oh5.oh} type="oh" key="3" />)
+        final_sequence.push(<Highlight text={this.props.eswen} type="eswen" key="1"
+                                       extra={" (" + this.props.the_re.name + ")"}/>)
+        final_sequence.push(<Highlight text={this.props.doh5} type="doh" key="2"/>)
+        extra5 += this.props.doh5
+        final_sequence.push(<Highlight text={this.props.oh5.oh} type="oh" key="3"/>)
+        extra5 += this.props.oh5.oh
 
-        this.state.fragments.forEach((fragment, fragment_idx, fragments_arr) => {
-            final_sequence.push(<Highlight text={fragment.seq} extra={"fragment " + (fragment_idx + 1)} type="seq" key={"4-" + fragment_idx} />)
-            let res_type = 'res'
-            if(fragment.new_res !== fragment.res)
-                res_type = 'res_dom'
-            final_sequence.push(<Highlight text={fragment.new_res} type={res_type} key={"5-" + fragment_idx} />)
-            let oh5 = ""
-            let oh3 = ""
-            let doh5 = ""
-            let doh3 = ""
-            let seq = fragment.seq
-            let template = fragment.seq
-            let tc = ''
-            if (fragment.idx === 0) {
-                doh5 = this.props.doh5
-                oh5 = this.props.oh5.oh
-            } else {
-                oh5 = seq.substring(0, this.props.oh_length)
-                seq = seq.substring(this.props.oh_length, seq.length)
-            }
+        if (this.props.res.length) {
+            domestication_output.push(<h4>Domestication</h4>)
+            let from = 0
+            this.props.res.forEach((re, idx) => {
+                final_sequence.push(<Highlight text={this.props.seq.substring(from, re.start)} type="seq"
+                                               extra={" fragment " + (idx + 1)} key={"s-" + idx}/>)
+                let template = this.props.seq.substring(from, re.start)
 
-            if (fragment.idx === this.state.fragments.length - 1) {
-                tc = this.props.oh3.tc ? tc_bases : ''
-                doh3 = this.props.doh3
-                oh3 = this.props.oh3.oh
-            } else {
-                template = seq + this.commonStart(fragment.res, fragment.new_res)
-                seq = seq + fragment.new_res
-                oh3 = fragments_arr[fragment_idx + 1].seq.substring(0, this.props.oh_length)
-            }
-            let method = "pcr"
-            if (fragment.seq.length <= this.props.pcrMinLength) {
-                method = "oann"
-            }
-            fragments_output.push(<PrimerDesign resInputHandle={this.resInputHandle} template={template}
-                                                name={this.props.name} idx={fragment.idx} pcrTm={this.props.pcrTm}
-                                                pcrMinLength={this.props.pcrMinLength} method={method} oh5={oh5}
-                                                oh3={oh3} doh5={doh5} doh3={doh3} tc={tc} eswen={this.props.eswen}
-                                                seq={seq} res={fragment.res} new_res={fragment.new_res} seq_no_res={fragment.seq}/>)
+                let type = "res"
+                let seq = re.seq
+                if (this.state.new_res[idx] && this.state.new_res[idx] !== re.seq) {
+                    type = "res_dom"
+                    seq = this.state.new_res[idx]
+                }
+                final_sequence.push(<Highlight text={seq} type={type} extra={" # " + (idx + 1)} key={"r-" + idx}/>)
+                template += this.commonStart(this.state.new_res[idx], re.seq)
+
+                if (idx) {
+                    const resParts = this.resParts(this.state.new_res[idx - 1], this.props.res[idx - 1].seq)
+                    extra5 = resParts.diff
+                    template = resParts.end + template
+                }
+
+                if(idx === this.props.res.length - 1){
+                    const resParts = this.resParts(this.state.new_res[idx], re.seq)
+                    extra3 = (resParts.diff + resParts.end + this.props.seq.substring(re.end + 1, this.props.seq.length)).substring(0, oh_length)
+                    if(extra3.length < oh_length)
+                        minOhLengthAlert = <div className="alert alert-danger">OH length under optimal length</div>
+                }
+
+                fragments.push({
+                    idx: idx,
+                    extra5: this.formatOH(extra5, oh_length),
+                    template: template.toLowerCase(),
+                    extra3: this.formatOH(extra3, oh_length),
+                })
+                domestication_output.push(<ResEditor resInputHandle={this.resInputHandle}
+                                                     new_res={this.state.new_res[idx]} res={re}/>)
+                domestication_output.push(minOhLengthAlert)
+                from = re.end + 1
+
+                if(idx === this.props.res.length - 1){
+                    const resParts = this.resParts(this.state.new_res[idx], re.seq)
+                    extra5 = resParts.diff
+                    template = resParts.end + this.props.seq.substring(from, this.props.seq.length)
+                    fragments.push({
+                        idx: idx + 1,
+                        extra5: this.formatOH(extra5, oh_length),
+                        template: template.toLowerCase(),
+                        extra3: "",
+                    })
+                }
+            })
+        } else {
+            final_sequence.push(<Highlight text={this.props.seq} type="seq" key="s-1"/>)
+        }
+
+        final_sequence.push(<Highlight text={this.props.oh3.tc ? tc_bases : ''} type="tc" key="6"/>)
+        extra3 = this.props.oh3.tc ? tc_bases : ''
+        final_sequence.push(<Highlight text={this.props.oh3.oh} type="oh" key="7"/>)
+        extra3 += this.props.oh3.oh
+        final_sequence.push(<Highlight text={this.props.doh3} type="doh" key="8"/>)
+        extra3 += this.props.doh3
+        final_sequence.push(<Highlight text={getReverseComplementSequenceString(this.props.eswen)} type="eswen"
+                                       key="9" extra={" (RevComp) (" + this.props.the_re.name + ")"}/>)
+        fragments[fragments.length - 1].extra3 = this.formatOH(extra3, oh_length)
+
+        let fragments_output = []
+        fragments.forEach((fragment) => {
+            fragments_output.push(<PrimerDesign name={this.props.name} pcrMinLength={this.props.pcrMinLength}
+                                                pcrTm={this.props.pcrTm} idx={fragment.idx} extra5={fragment.extra5}
+                                                extra3={fragment.extra3} template={fragment.template} eswen={this.props.eswen} />)
         })
-
-        final_sequence.push(<Highlight text={this.props.oh3.tc ? tc_bases : ''} type="tc" key="6" />)
-        final_sequence.push(<Highlight text={this.props.oh3.oh} type="oh" key="7" />)
-        final_sequence.push(<Highlight text={this.props.doh3} type="doh" key="8" />)
-        final_sequence.push(<Highlight text={this.props.eswen} type="eswen" key="9" />)
 
         output.push(<h4>Amplicon / Oligo annealing sequence</h4>)
         output.push(<div className="alert alert-light border text-break">{final_sequence}</div>)
+
+        output.push(domestication_output)
+
         output.push(<h4>Primer design</h4>)
-        output.push(<div>{fragments_output}</div>)
+        output.push(fragments_output)
         return <div>{output}</div>
     }
 }
@@ -444,49 +515,28 @@ class L0D extends Component {
             this.state.enzymes.forEach((enzyme_name) => {
                 RES.push(aliasedEnzymesByName[enzyme_name])
             })
-            const cutSites = getCutsitesFromSequence(sequenceInput, false, RES)
+            const cutSites = getCutsitesFromSequence(sequenceInput + "aaaaaaaaaaaaa", false, RES)
 
-            let fragments = []
-            let recognitionSites = []
-            let idx = 0
+            let restrictionSites = []
 
             if (Object.keys(cutSites).length) {
                 Object.entries(cutSites).forEach(([key, enzymeCuts]) => {
-                    enzymeCuts.forEach((enzymeCut) => {
-                        recognitionSites.push({
+                    enzymeCuts.forEach((enzymeCut, idx) => {
+                        restrictionSites.push({
+                            seq: sequenceInput.substring(enzymeCut.recognitionSiteRange['start'], enzymeCut.recognitionSiteRange['end'] + 1),
                             start: enzymeCut.recognitionSiteRange['start'],
                             end: enzymeCut.recognitionSiteRange['end'],
                             enzyme: enzymeCut.name
                         })
                     })
-                    recognitionSites.sort(function (a, b) {
-                        return b.start - a.start
+                    restrictionSites.sort(function (a, b) {
+                        return a.start - b.start
                     })
-                    let nextStart = 0
-                    recognitionSites.forEach((recognitionSite) => {
-                        fragments.push({
-                            idx: idx,
-                            seq: sequenceInput.substring(nextStart, recognitionSite.start),
-                            res: sequenceInput.substring(recognitionSite.start, recognitionSite.end + 1)
-                        })
-                        nextStart = recognitionSite.end + 1
-                        idx += 1
+                    restrictionSites.forEach((restrictionSite, idx) => {
+                        restrictionSite.idx = idx
                     })
-                    fragments.push({
-                        idx: idx,
-                        seq: sequenceInput.substring(nextStart, sequenceInput.length),
-                        res: ""
-                    })
-                    idx += 1
                 })
-            } else
-                fragments.push({
-                    idx: idx,
-                    seq: sequenceInput.substring(0, sequenceInput.length),
-                    res: ""
-                })
-
-            console.log(fragments)
+            }
 
             const the_re = defaultEnzymesByName[the_standard.enzyme]
             const enzymeSiteWithExtraNucl = this.state.base_pairs_from_end + the_re.site.toUpperCase() + the_standard.bases_upto_snip
@@ -507,9 +557,9 @@ class L0D extends Component {
             }
 
             output = <Fragments name={this.state.name} pcrMinLength={this.state.pcrMinLength} pcrTm={this.state.pcrTm}
-                                oh_length={Math.abs(the_re.topSnipOffset - the_re.bottomSnipOffset)}
-                                fragments={fragments} oh5={oh5} oh3={oh3} doh5={the_standard.receiver_ohs.oh5}
-                                doh3={the_standard.receiver_ohs.oh3} eswen={enzymeSiteWithExtraNucl}/>
+                                the_re={the_re} res={restrictionSites} oh5={oh5} oh3={oh3}
+                                doh5={the_standard.receiver_ohs.oh5} doh3={the_standard.receiver_ohs.oh3}
+                                eswen={enzymeSiteWithExtraNucl} seq={sequenceInput}/>
         }
 
         return (
