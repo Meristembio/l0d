@@ -36,7 +36,8 @@ const L0DPartsStandards = {
       },
       e: {
         name: 'E',
-        oh: 'GCTT'
+        oh: 'GCTT',
+        stop: true
       },
       f: {
         name: 'F',
@@ -81,7 +82,8 @@ const L0DPartsStandards = {
       },
       cds3t5: {
         name: 'CDS.3\'-T.5\'',
-        oh: 'GCTT'
+        oh: 'GCTT',
+        stop: true
       },
       t3: {
         name: 'T.3\'',

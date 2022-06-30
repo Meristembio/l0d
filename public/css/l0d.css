@@ -9,15 +9,16 @@ div#seqviz-container {
 }
 .hl{
     position: relative;
-    border-bottom: solid 2px #198754;
+    background: #fff3cd;
     line-height: 1em;
-    padding: 0.2em 0.4em;
+    padding: 0.4em 0.6em;
     font-size: .9em;
     margin-right: 0.4rem;
     cursor: pointer;
     transition: all .3s ease-in-out;
+    line-height: 2.6em;
 }
 
 .hl:hover {
-    background: rgb(60 153 110 / 50%);
+    background: #cff4fc;
 }

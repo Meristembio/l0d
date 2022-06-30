@@ -23,18 +23,17 @@ export function getReverseComplementSequenceString(sequence){
 }
 
 export function tmSeq(seq, tm){
-    let seq_final = ""
-    if (seq.length){
-        for(let i = 1; i<seq.length; i++){
-            if (tmCalc(seq.substring(0,i)) > tm){
+    if (seq.length >= 7){
+        let seq_final = "minTempNotReached"
+        console.log("ATGAAGC" + " / " + calculateTm("ATGAAGC"))
+        for(let i = 7; i<seq.length; i++){
+            if (calculateTm(seq.substring(0,i)) > tm){
                 seq_final = seq.substring(0,i)
                 break
             }
         }
+        return seq_final
+    } else {
+        return 'minLengthError'
     }
-    return seq_final
-}
-
-function tmCalc(seq){
-    return calculateTm(seq)
 }
