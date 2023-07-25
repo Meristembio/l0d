@@ -25,7 +25,6 @@ export function getReverseComplementSequenceString(sequence){
 export function tmSeq(seq, tm){
     if (seq.length >= 7){
         let seq_final = "minTempNotReached"
-        console.log("ATGAAGC" + " / " + calculateTm("ATGAAGC"))
         for(let i = 7; i<seq.length; i++){
             if (calculateTm(seq.substring(0,i)) > tm){
                 seq_final = seq.substring(0,i)
