@@ -46,11 +46,6 @@ const L0DPartsStandards = {
         name: 'F',
         oh: 'CGCT'
       },
-      x: {
-        name: 'X',
-        oh: 'TGGA',
-        tc: true
-      },
     }
   },
   gb: {
@@ -62,66 +57,62 @@ const L0DPartsStandards = {
       'bsmbi'
     ],
     l0_receiver: {
-      name: '',
+      name: 'pUPD',
       ohs: {
-        oh5: '',
-        oh3: ''
+        oh5: 'CTCG',
+        oh3: 'CGAG'
       },      
     },
     default: {
-      5: 'nt01',
-      3: 'tr13'
+      5: 'a1_5',
+      3: 'a2_5'
     },
     ohs: {
-      nt01: {
-        name: '5\'NT 01 5\'',
+      a1_5: {
+        name: 'A1 5\'',
         oh: 'GGAG'
       },
-      nt02: {
-        name: '5\'NT 02 5\'',
+      a2_5: {
+        name: 'A2 5\'',
         oh: 'TGAC'
       },
-      nt03: {
-        name: '5\'NT 03 5\'',
+      a3_5: {
+        name: 'A3 5\'',
         oh: 'TCCC'
       },
-      tr11: {
-        name: 'TR 11 5\'',
+      b1_5: {
+        name: 'B1 5\'',
         oh: 'TACT'
       },
-      tr12: {
-        name: 'TR 12 5\'',
+      b2_5: {
+        name: 'B2 5\'',
         oh: 'CCAT'
       },
-      tr13: {
-        name: 'TR 13 5\'',
+      b3_5: {
+        name: 'B3 5\'',
         oh: 'AATG'
       },
-      tr14: {
-        name: 'TR 14 5\'',
+      b4_5: {
+        name: 'B4 5\'',
         oh: 'AGCC',
         tc: true
       },
-      tr15: {
-        name: 'TR 15 5\'',
+      b5_5: {
+        name: 'B5 5\'',
         oh: 'TTCG',
         tc: true
       },
-      tr16: {
-        name: 'TR 16 5\'',
-        oh: 'GCAG',
-        tc: true
+      b6_5: {
+        name: 'B6 5\'',
+        oh: 'GCTT',
+        stop: true
       },
-      tr17: {
-        name: 'TR 17 5\'',
-        oh: 'GCTT'
-      },
-      nt21: {
-        name: '3\'NT 21 5\'',
+      c1_5: {
+        name: 'C1 5\'',
         oh: 'GGTA'
       },
-      nt213: {
-        name: '3\'NT 21 3\'',
+      c1_3: {
+        name: 'C1 3\'',
         oh: 'CGCT'
       },
     }
@@ -131,8 +122,8 @@ const L0DPartsStandards = {
     enzyme: 'bpii',
     bases_upto_snip: 'aa',
     default: {
-      5: 'p5',
-      3: 'p3u5'
+      5: 'a',
+      3: 'b'
     },
     l0_receiver: {
       name: '',
@@ -146,30 +137,30 @@ const L0DPartsStandards = {
         'bpii',
     ],
     ohs: {
-      p5: {
-        name: 'P.5\'',
+      a: {
+        name: 'A',
         oh: 'GGAG'
       },
-      p3u5: {
-        name: 'P.3\'-U.5\'',
+      b: {
+        name: 'B',
         oh: 'TACT'
       },
-      u3sp5: {
-        name: 'U.3\'-SP.5\'',
+      c: {
+        name: 'C',
         oh: 'AATG'
       },
-      sp3cds5: {
-        name: 'SP.3\'-CDS.5\'',
+      d: {
+        name: 'D',
         oh: 'AGGT',
         tc: true
       },
-      cds3t5: {
-        name: 'CDS.3\'-T.5\'',
+      e: {
+        name: 'E',
         oh: 'GCTT',
         stop: true
       },
-      t3: {
-        name: 'T.3\'',
+      f: {
+        name: 'F',
         oh: 'CGCT'
       },
     },
